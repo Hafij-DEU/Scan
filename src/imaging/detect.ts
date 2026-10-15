@@ -47,10 +47,59 @@ export function detectDocument(src: CanvasImageSource, srcW: number, srcH: numbe
     for (let i = 0; i < region.length; i++) regionArea += region[i];
     const fill = regionArea / quadArea;
     if (fill < 0.82) continue;
+    // A real page outline is a visible edge on every side not cut off by the frame.
+    if (!edgesHaveContrast(gray, w, h, quad)) continue;
     const score = quadArea * fill * fill;
     if (!best || score > best.score) best = { quad, score };
   }
   return best ? scaleQuad(best.quad, 1 / scale) : null;
+}
+
+const EDGE_OFFSET = 4;
+const EDGE_MIN_DIFF = 14;
+const EDGE_MIN_SHARE = 0.65;
+const BORDER_SLACK = 3;
+
+/**
+ * Every side of the quad must separate clearly different brightness: for
+ * points along the side, compare the gray level a few pixels inside and
+ * outside. Sides lying on the image border (page running off the frame)
+ * are exempt. Rejects regions carved out of screenshots, text blocks or
+ * uniform backgrounds, which have no outline of their own.
+ */
+function edgesHaveContrast(gray: Uint8Array, w: number, h: number, q: Quad): boolean {
+  const sample = (x: number, y: number) => gray[clamp(Math.round(y), 0, h - 1) * w + clamp(Math.round(x), 0, w - 1)];
+  const onBorder = (a: Pt, b: Pt) =>
+    (a.x <= BORDER_SLACK && b.x <= BORDER_SLACK) ||
+    (a.y <= BORDER_SLACK && b.y <= BORDER_SLACK) ||
+    (a.x >= w - BORDER_SLACK && b.x >= w - BORDER_SLACK) ||
+    (a.y >= h - BORDER_SLACK && b.y >= h - BORDER_SLACK);
+  for (let i = 0; i < 4; i++) {
+    const a = q[i];
+    const b = q[(i + 1) % 4];
+    if (onBorder(a, b)) continue;
+    const len = Math.hypot(b.x - a.x, b.y - a.y);
+    if (len < 1) return false;
+    // Corners are clockwise on screen, so (dy, -dx) points outward.
+    const nx = (b.y - a.y) / len;
+    const ny = -(b.x - a.x) / len;
+    const n = Math.max(8, Math.round(len / 3));
+    let strong = 0;
+    let counted = 0;
+    for (let k = 0; k < n; k++) {
+      const t = 0.1 + (0.8 * k) / (n - 1);
+      const px = a.x + (b.x - a.x) * t;
+      const py = a.y + (b.y - a.y) * t;
+      const ox = px + nx * EDGE_OFFSET;
+      const oy = py + ny * EDGE_OFFSET;
+      // Outside samples beyond the frame carry no information.
+      if (ox < 0 || oy < 0 || ox > w - 1 || oy > h - 1) continue;
+      counted++;
+      if (Math.abs(sample(px - nx * EDGE_OFFSET, py - ny * EDGE_OFFSET) - sample(ox, oy)) >= EDGE_MIN_DIFF) strong++;
+    }
+    if (counted >= 4 && strong / counted < EDGE_MIN_SHARE) return false;
+  }
+  return true;
 }
 
 function boxBlur(a: Uint8Array, w: number, h: number, r: number): void {

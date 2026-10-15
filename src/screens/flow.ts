@@ -20,7 +20,8 @@ export interface PageDraft {
 
 export function autoQuad(c: HTMLCanvasElement): { quad: Quad; detected: boolean } {
   const quad = detectDocument(c, c.width, c.height);
-  return quad ? { quad, detected: true } : { quad: fullQuad(c.width, c.height, 0.04), detected: false };
+  // No page outline (screenshot, flat scan, or no contrast): keep the whole image.
+  return quad ? { quad, detected: true } : { quad: fullQuad(c.width, c.height), detected: false };
 }
 
 export function startCrop(docId: string | null, original: HTMLCanvasElement): void {
