@@ -1,6 +1,6 @@
 {
   "name": "docscan",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Document scanner: capture, auto-crop, enhance and export to PDF",
   "private": true,
   "packageManager": "pnpm@10.33.4",

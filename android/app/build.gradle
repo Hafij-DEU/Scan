@@ -2,7 +2,9 @@ plugins {
     id 'com.android.application'
 }
 
-def appVersion = (project.findProperty('docscanVersion') ?: '0.1.0').toString()
+// One version for all platforms: package.json, unless overridden with -PdocscanVersion=x.y.z.
+def packageVersion = new groovy.json.JsonSlurper().parse(rootProject.file('../package.json')).version
+def appVersion = (project.findProperty('docscanVersion') ?: packageVersion).toString()
 def parts = appVersion.replaceAll(/[-+].*$/, '').tokenize('.').collect { it.isInteger() ? it.toInteger() : 0 }
 while (parts.size() < 3) parts << 0
 
