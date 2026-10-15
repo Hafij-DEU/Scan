@@ -7,7 +7,10 @@ on the device: no account, no ads, no telemetry.
 
 One TypeScript web app (`src/`), two shells:
 
-- **Linux `.deb`**: Electron (`electron/main.cjs`), packaged by electron-builder.
+- **Linux `.deb` and Windows `.exe`**: Electron (`electron/main.cjs`), packaged by electron-builder.
+  Windows builds run on GitHub Actions (`.github/workflows/windows.yml`): publishing a release attaches
+  `DocScan-<version>-setup-x64.exe` (installer) and `DocScan-<version>-portable-x64.exe` to it.
+  The exes are unsigned, so Windows SmartScreen shows a warning on first run.
 - **Android `.apk`**: Java WebView host (`android/`). It serves the bundle from
   `https://appassets.androidplatform.net` and adds native camera permission,
   the file picker, and save/share (`Host.java`).
@@ -19,6 +22,7 @@ The analysis of the original app is in [docs/camscanner-analysis.md](docs/camsca
 ```bash
 pnpm install
 pnpm build:deb   # -> release/DocScan-<version>-amd64.deb
+pnpm build:win   # -> release/*.exe (needs Windows; CI does this)
 pnpm build:apk   # -> android/app/build/outputs/apk/debug/DocScan-<version>-android-debug.apk
 pnpm start       # run the desktop app without packaging
 pnpm dev         # web UI in a browser at http://localhost:5173

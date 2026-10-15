@@ -19,6 +19,7 @@
     "build:web": "tsc --noEmit && vite build",
     "start": "pnpm run build:web && electron .",
     "build:deb": "pnpm run build:web && electron-builder --linux deb --publish never",
+    "build:win": "pnpm run build:web && electron-builder --win --x64 --publish never",
     "sync:android": "node scripts/sync-android.mjs",
     "build:apk": "pnpm run build:web && pnpm run sync:android && cd android && ~/.local/opt/gradle-8.11.1/bin/gradle --offline assembleDebug"
   },
@@ -53,6 +54,33 @@
     },
     "deb": {
       "packageCategory": "graphics"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "shortcutName": "DocScan",
+      "artifactName": "DocScan-${version}-setup-x64.${ext}"
+    },
+    "portable": {
+      "artifactName": "DocScan-${version}-portable-x64.${ext}"
     }
   }
 }
