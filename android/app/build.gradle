@@ -1,0 +1,81 @@
+plugins {
+    id 'com.android.application'
+}
+
+def appVersion = (project.findProperty('docscanVersion') ?: '0.1.0').toString()
+def parts = appVersion.replaceAll(/[-+].*$/, '').tokenize('.').collect { it.isInteger() ? it.toInteger() : 0 }
+while (parts.size() < 3) parts << 0
+
+// Optional release signing from environment variables; without them the
+// release APK is unsigned (use the debug APK for side-loading).
+def keystorePath = System.getenv('DOCSCAN_KEYSTORE')
+
+android {
+    namespace 'io.github.hafijbge.docscan'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'io.github.hafijbge.docscan'
+        // MediaStore.Downloads (used to save exports) needs API 29.
+        minSdk 29
+        targetSdk 35
+        versionCode Math.max(1, parts[0] * 10000 + parts[1] * 100 + parts[2])
+        versionName appVersion
+    }
+
+    signingConfigs {
+        if (keystorePath) {
+            release {
+                storeFile file(keystorePath)
+                storePassword System.getenv('DOCSCAN_KEYSTORE_PASSWORD')
+                keyAlias System.getenv('DOCSCAN_KEY_ALIAS')
+                keyPassword System.getenv('DOCSCAN_KEY_PASSWORD')
+            }
+        }
+    }
+
+    buildTypes {
+        debug {
+            applicationIdSuffix '.debug'
+            versionNameSuffix '-debug'
+        }
+        release {
+            minifyEnabled false
+            if (keystorePath) signingConfig signingConfigs.release
+        }
+    }
+
+    buildFeatures {
+        buildConfig true
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    androidResources {
+        // Keep Vite chunks whose names start with "_" (the default pattern drops them).
+        ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:!CVS:!thumbs.db:!picasa.ini:!*~'
+    }
+
+    applicationVariants.all { variant ->
+        variant.outputs.all {
+            outputFileName = "DocScan-${appVersion}-android-${variant.buildType.name}.apk"
+        }
+    }
+}
+
+dependencies {
+    implementation 'androidx.webkit:webkit:1.12.1'
+}
+
+// The web bundle must exist before packaging: `pnpm build:web && pnpm sync:android` writes it.
+tasks.register('checkWebBundle') {
+    doLast {
+        if (!file('src/main/assets/www/index.html').exists()) {
+            throw new GradleException('Web bundle missing: run `pnpm build:web && pnpm sync:android` first.')
+        }
+    }
+}
+preBuild.dependsOn checkWebBundle

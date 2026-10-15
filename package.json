@@ -1,0 +1,58 @@
+{
+  "name": "docscan",
+  "version": "0.1.0",
+  "description": "Document scanner: capture, auto-crop, enhance and export to PDF",
+  "private": true,
+  "packageManager": "pnpm@10.33.4",
+  "license": "MIT",
+  "author": {
+    "name": "Hafij-BGE",
+    "email": "mdhafijur.rahman@ogr.deu.edu.tr"
+  },
+  "homepage": "https://github.com/Hafij-DEU/Scan",
+  "main": "electron/main.cjs",
+  "desktopName": "docscan.desktop",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "typecheck": "tsc --noEmit",
+    "build:web": "tsc --noEmit && vite build",
+    "start": "pnpm run build:web && electron .",
+    "build:deb": "pnpm run build:web && electron-builder --linux deb --publish never",
+    "sync:android": "node scripts/sync-android.mjs",
+    "build:apk": "pnpm run build:web && pnpm run sync:android && cd android && ~/.local/opt/gradle-8.11.1/bin/gradle --offline assembleDebug"
+  },
+  "devDependencies": {
+    "electron": "42.1.0",
+    "electron-builder": "26.15.3",
+    "typescript": "6.0.3",
+    "vite": "8.3.4"
+  },
+  "build": {
+    "appId": "io.github.hafijbge.docscan",
+    "productName": "DocScan",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "electron/**",
+      "dist/web/**",
+      "build/icon.png"
+    ],
+    "linux": {
+      "target": [
+        "deb"
+      ],
+      "icon": "build/icon.png",
+      "category": "Graphics",
+      "maintainer": "Hafij-BGE <mdhafijur.rahman@ogr.deu.edu.tr>",
+      "synopsis": "Scan documents with your camera and export PDF",
+      "artifactName": "DocScan-${version}-${arch}.${ext}",
+      "syncDesktopName": true
+    },
+    "deb": {
+      "packageCategory": "graphics"
+    }
+  }
+}
