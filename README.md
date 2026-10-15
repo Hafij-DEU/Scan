@@ -17,6 +17,30 @@ One TypeScript web app (`src/`), two shells:
 
 The analysis of the original app is in [docs/camscanner-analysis.md](docs/camscanner-analysis.md).
 
+## Install
+
+Downloads are on the [releases page](https://github.com/Hafij-DEU/Scan/releases/latest).
+
+**Linux (Debian / Ubuntu, x86-64).** This command works from any folder: it downloads the package, then installs it.
+Run it again with a newer version number to update.
+
+```bash
+wget -O /tmp/DocScan.deb https://github.com/Hafij-DEU/Scan/releases/download/v0.1.1/DocScan-0.1.1-amd64.deb && sudo apt install /tmp/DocScan.deb
+```
+
+If you already downloaded the `.deb` with a browser, give apt the file's full path; a bare file name does not work:
+
+```bash
+sudo apt install ~/Downloads/DocScan-0.1.1-amd64.deb
+```
+
+Some download managers save it to `~/Downloads/Compressed/` instead.
+
+**Windows 10/11.** Run `DocScan-<version>-setup-x64.exe`, or `DocScan-<version>-portable-x64.exe` without installing.
+If SmartScreen appears, choose **More info**, then **Run anyway**.
+
+**Android 10+.** Open `DocScan-<version>.apk` on the phone and allow installs from that app when asked.
+
 ## Build
 
 ```bash
