@@ -139,3 +139,5 @@ button:disabled { opacity: 0.35; cursor: default; }
 .toast { position: fixed; left: 50%; bottom: max(96px, calc(env(safe-area-inset-bottom) + 96px)); z-index: 30; transform: translateX(-50%); max-width: calc(100% - 32px); padding: 12px 18px; border-radius: 12px; background: #1f2937; color: #fff; font-size: 14px; box-shadow: 0 8px 24px rgb(0 0 0 / 0.3); transition: opacity 0.4s; }
 .toast.error { background: var(--danger); }
 .toast.out { opacity: 0; }
+.about .content a { color: var(--brand); word-break: break-all; }
+.about .content h2 { margin: 0 0 12px; }

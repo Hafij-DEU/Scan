@@ -54,7 +54,7 @@ Get the files from the [latest release](https://github.com/Hafij-DEU/Scan/releas
 This command works from any folder. It downloads the package, then installs it; run it again with a newer version to update.
 
 ```bash
-wget -O /tmp/DocScan.deb https://github.com/Hafij-DEU/Scan/releases/download/v0.1.1/DocScan-0.1.1-amd64.deb && sudo apt install /tmp/DocScan.deb
+wget -O /tmp/DocScan.deb https://github.com/Hafij-DEU/Scan/releases/download/v0.1.2/DocScan-0.1.2-amd64.deb && sudo apt install /tmp/DocScan.deb
 ```
 
 <details>
@@ -63,7 +63,7 @@ wget -O /tmp/DocScan.deb https://github.com/Hafij-DEU/Scan/releases/download/v0.
 Give `apt` the file's full path. A bare file name is looked up as a package name and fails.
 
 ```bash
-sudo apt install ~/Downloads/DocScan-0.1.1-amd64.deb
+sudo apt install ~/Downloads/DocScan-0.1.2-amd64.deb
 ```
 
 Some download managers save to `~/Downloads/Compressed/` instead.

@@ -113,8 +113,16 @@ public class MainActivity extends Activity {
 
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
-                // The app never leaves its own origin.
-                return !HOST.equals(request.getUrl().getHost());
+                // The app never leaves its own origin; web links open in the browser.
+                if (HOST.equals(request.getUrl().getHost())) return false;
+                if ("https".equals(request.getUrl().getScheme())) {
+                    try {
+                        startActivity(new android.content.Intent(android.content.Intent.ACTION_VIEW, request.getUrl()));
+                    } catch (RuntimeException ignored) {
+                        // no browser
+                    }
+                }
+                return true;
             }
         });
 

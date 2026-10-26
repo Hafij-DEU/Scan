@@ -1,8 +1,9 @@
 import { getPage, listDocs } from '../store';
-import { h, icon } from '../ui/dom';
+import { h, icon, iconButton } from '../ui/dom';
 import { push, type Screen } from '../ui/router';
 import { cameraScreen } from './camera';
 import { docScreen } from './doc';
+import { aboutScreen } from './about';
 import { importInto } from './flow';
 
 export function homeScreen(): Screen {
@@ -41,7 +42,7 @@ export function homeScreen(): Screen {
   }
 
   const el = h('div', { class: 'home' },
-    h('header', { class: 'bar brand' }, h('h1', {}, 'DocScan')),
+    h('header', { class: 'bar brand' }, h('h1', { class: 'bar-title' }, 'DocScan'), iconButton('info', 'About', () => push(aboutScreen()))),
     h('main', { class: 'content' }, list),
     h('div', { class: 'fab-row' },
       h('button', { class: 'fab secondary', onclick: () => void importInto(null) }, icon('image'), h('span', {}, 'Import')),

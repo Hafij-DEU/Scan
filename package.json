@@ -1,6 +1,6 @@
 {
   "name": "docscan",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Document scanner: capture, auto-crop, enhance and export to PDF",
   "private": true,
   "packageManager": "pnpm@10.33.4",
@@ -39,7 +39,8 @@
     "files": [
       "electron/**",
       "dist/web/**",
-      "build/icon.png"
+      "build/icon.png",
+      "THIRD_PARTY_NOTICES.md"
     ],
     "linux": {
       "target": [
