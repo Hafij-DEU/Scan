@@ -52,7 +52,7 @@ Get the files from the [latest release](https://github.com/Hafij-DEU/Scan/releas
 
 | Platform | File | Size | Requirements |
 | --- | --- | --- | --- |
-| **Linux** | `DocScan-<version>-amd64.deb` | about 7 MB | Ubuntu 22.04, Debian 12 or newer, x86-64 |
+| **Linux** | `DocScan-<version>-amd64.deb` | about 5 MB | Ubuntu 22.04, Debian 12 or newer, x86-64 |
 | **Windows** | `DocScan-<version>-setup-x64.exe` (installer)<br>`DocScan-<version>-portable-x64.exe` (no install) | a few MB | Windows 10 or 11, x64 |
 | **Android** | `DocScan-<version>.apk` | about 7 MB | Android 10 or newer |
 
