@@ -4,7 +4,7 @@ import { warpPerspective } from '../imaging/warp';
 import type { Rotation } from '../store';
 import { actionButton, busy, errorMessage, h, iconButton, toast } from '../ui/dom';
 import { pop, type Screen } from '../ui/router';
-import { openDoc, savePage, type PageDraft } from './flow';
+import { openDoc, saveCardSide, savePage, type PageDraft } from './flow';
 
 const PREVIEW_SIDE = 1600;
 
@@ -64,6 +64,11 @@ export function editScreen(draft: PageDraft): Screen {
   async function save() {
     const done = await busy('Saving page…');
     try {
+      if (draft.card) {
+        await saveCardSide({ ...draft, card: draft.card, filter, rotation });
+        done();
+        return;
+      }
       const id = await savePage({ ...draft, filter, rotation });
       done();
       openDoc(id);
@@ -75,7 +80,7 @@ export function editScreen(draft: PageDraft): Screen {
   }
 
   const el = h('div', { class: 'edit dark-screen' },
-    h('header', { class: 'bar dark' }, iconButton('back', 'Back', () => pop()), h('span', { class: 'bar-title' }, 'Enhance')),
+    h('header', { class: 'bar dark' }, iconButton('back', 'Back', () => pop()), h('span', { class: 'bar-title' }, draft.card ? (draft.card.front ? 'Back side' : 'Front side') : 'Enhance')),
     stage,
     chips,
     h('div', { class: 'toolbar dark' },

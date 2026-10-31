@@ -643,6 +643,7 @@ version = "0.0.0"
 dependencies = [
  "open",
  "percent-encoding",
+ "serde",
  "tauri",
  "tauri-build",
  "tauri-plugin-dialog",

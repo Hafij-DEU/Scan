@@ -3,7 +3,7 @@ import type { Quad } from '../imaging/geometry';
 import { drawScaled, loadImage } from '../imaging/image';
 import { busy, errorMessage, h, iconButton, toast } from '../ui/dom';
 import { pop, type Screen } from '../ui/router';
-import { importInto, startCrop } from './flow';
+import { importInto, startCrop, type CardState } from './flow';
 
 interface ImageCaptureLike {
   takePhoto(): Promise<Blob>;
@@ -11,10 +11,15 @@ interface ImageCaptureLike {
 type ImageCaptureCtor = new (track: MediaStreamTrack) => ImageCaptureLike;
 
 /** Live camera with page-outline overlay. */
-export function cameraScreen(docId: string | null): Screen {
+export function cameraScreen(docId: string | null, card?: CardState): Screen {
   const video = h('video', { class: 'cam-video', autoplay: true, muted: true, playsInline: true });
   const overlay = h('canvas', { class: 'cam-overlay' });
   const status = h('p', { class: 'cam-status' }, 'Starting camera…');
+  const badge = h('p', { class: 'cam-badge', hidden: !card });
+  const showBadge = () => {
+    if (card) badge.textContent = card.front ? 'Back side of the card' : 'Front side of the card';
+  };
+  showBadge();
   const shutter = h('button', { class: 'shutter', 'aria-label': 'Capture page', onclick: () => void capture() });
   let stream: MediaStream | null = null;
   let timer = 0;
@@ -108,7 +113,7 @@ export function cameraScreen(docId: string | null): Screen {
       }
       shot ??= drawScaled(video, video.videoWidth, video.videoHeight, 3200);
       stop();
-      startCrop(docId, shot);
+      startCrop(docId, shot, card);
     } catch (e) {
       toast(errorMessage(e), true);
     } finally {
@@ -117,11 +122,11 @@ export function cameraScreen(docId: string | null): Screen {
     }
   }
 
-  const el = h('div', { class: 'camera' },
-    h('header', { class: 'bar dark' }, iconButton('back', 'Back', () => pop()), h('span', { class: 'bar-title' }, 'Scan')),
-    h('div', { class: 'cam-stage' }, video, overlay, status),
+  const el = h('div', { class: 'camera dark-screen' },
+    h('header', { class: 'bar dark' }, iconButton('back', 'Back', () => pop()), h('span', { class: 'bar-title' }, card ? 'ID card' : 'Scan')),
+    h('div', { class: 'cam-stage' }, video, overlay, status, badge),
     h('div', { class: 'cam-controls' },
-      iconButton('image', 'Import photo', () => void importInto(docId), 'round'),
+      iconButton('image', 'Import photo', () => void importInto(docId, card), 'round'),
       shutter,
       h('span', { class: 'round-spacer' }),
     ),
@@ -136,6 +141,7 @@ export function cameraScreen(docId: string | null): Screen {
     },
     resume() {
       active = true;
+      showBadge();
       void start();
     },
     dispose() {

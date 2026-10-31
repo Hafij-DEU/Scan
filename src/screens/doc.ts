@@ -1,7 +1,7 @@
-import { buildPdf, type PdfImage } from '../pdf';
-import { canShare, saveBlob, shareBlob } from '../platform';
+import { savePdf, sharePdf } from '../export';
+import { canShare } from '../platform';
 import { deleteDoc, getDoc, getPage, putDoc, type DocMeta } from '../store';
-import { actionButton, busy, confirmDialog, errorMessage, h, iconButton, promptDialog, toast } from '../ui/dom';
+import { actionButton, confirmDialog, h, iconButton, promptDialog, toast } from '../ui/dom';
 import { pop, push, type Screen } from '../ui/router';
 import { cameraScreen } from './camera';
 import { importInto } from './flow';
@@ -55,28 +55,6 @@ export function docScreen(docId: string): Screen {
     toast('Document deleted');
   }
 
-  async function exportPdf(share: boolean) {
-    if (!doc?.pages.length) {
-      toast('No pages to export', true);
-      return;
-    }
-    const done = await busy('Creating PDF…');
-    try {
-      const images: PdfImage[] = [];
-      for (const pid of doc.pages) {
-        const page = await getPage(pid);
-        if (page) images.push({ jpeg: new Uint8Array(await page.processed.arrayBuffer()), width: page.width, height: page.height });
-      }
-      const pdf = buildPdf(images, doc.name);
-      const name = `${fileName(doc.name)}.pdf`;
-      toast(share ? await shareBlob(pdf, name) : await saveBlob(pdf, name));
-    } catch (e) {
-      toast(errorMessage(e), true);
-    } finally {
-      done();
-    }
-  }
-
   const el = h('div', { class: 'doc' },
     h('header', { class: 'bar' },
       iconButton('back', 'Back', () => pop()),
@@ -87,14 +65,11 @@ export function docScreen(docId: string): Screen {
     h('div', { class: 'toolbar' },
       actionButton('camera', 'Scan', () => push(cameraScreen(docId))),
       actionButton('image', 'Import', () => void importInto(docId)),
-      actionButton('pdf', 'Save PDF', () => void exportPdf(false), 'primary'),
-      canShare && actionButton('share', 'Share', () => void exportPdf(true)),
+      actionButton('pdf', 'Save PDF', () => void (doc && savePdf(doc)), 'primary'),
+      canShare && actionButton('share', 'Share', () => void (doc && sharePdf(doc))),
     ),
   );
   void load();
   return { name: `doc:${docId}`, el, resume: () => void load(), dispose: revoke };
 }
 
-export function fileName(name: string): string {
-  return name.replace(/[\\/:*?"<>|\x00-\x1f]+/g, '_').trim() || 'scan';
-}

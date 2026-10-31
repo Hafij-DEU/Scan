@@ -7,7 +7,7 @@
   "build": {
     "frontendDist": "../dist/web",
     "devUrl": "http://localhost:5173",
-    "beforeDevCommand": "pnpm exec vite --port 5173 --strictPort",
+    "beforeDevCommand": "node scripts/copy-ocr.mjs && pnpm exec vite --port 5173 --strictPort",
     "beforeBuildCommand": "pnpm run build:web"
   },
   "app": {

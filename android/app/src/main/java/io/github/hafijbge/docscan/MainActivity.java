@@ -25,8 +25,11 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.LinearLayout;
+import android.widget.Toast;
 
 import androidx.webkit.WebViewAssetLoader;
+
+import org.json.JSONObject;
 
 import java.util.Arrays;
 
@@ -43,6 +46,7 @@ public class MainActivity extends Activity {
     private static final String START_URL = "https://" + HOST + "/assets/www/index.html";
     private static final int REQ_CAMERA = 1;
     private static final int REQ_FILES = 2;
+    private static final int REQ_FOLDER = 3;
 
     private WebView webView;
     private View topInset;
@@ -71,6 +75,8 @@ public class MainActivity extends Activity {
 
     /** System bars are drawn over spacer views sized from the window insets (edge-to-edge is enforced on API 35). */
     private void setupEdgeToEdge(LinearLayout root) {
+        // Android 10 keeps its own system bars; setBars colours them instead.
+        if (Build.VERSION.SDK_INT < 30) return;
         Window window = getWindow();
         window.setDecorFitsSystemWindows(false);
         window.setNavigationBarContrastEnforced(false);
@@ -190,8 +196,88 @@ public class MainActivity extends Activity {
         }
     }
 
+    /** Opens the system folder picker, starting at Documents/DocScan. */
+    void pickFolder() {
+        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE)
+            .putExtra(android.provider.DocumentsContract.EXTRA_INITIAL_URI,
+                Uri.parse("content://com.android.externalstorage.documents/document/primary%3ADocuments%2FDocScan"))
+            .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
+        try {
+            startActivityForResult(intent, REQ_FOLDER);
+        } catch (ActivityNotFoundException e) {
+            callJs("__docscanFolderPicked", null);
+        }
+    }
+
+    private void folderPicked(int resultCode, Intent data) {
+        Uri tree = resultCode == RESULT_OK && data != null ? data.getData() : null;
+        if (tree == null) {
+            callJs("__docscanFolderPicked", null);
+            return;
+        }
+        try {
+            getContentResolver().takePersistableUriPermission(tree,
+                Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+        } catch (SecurityException e) {
+            toastError("Cannot keep access to that folder");
+            callJs("__docscanFolderPicked", null);
+            return;
+        }
+        getSharedPreferences(Host.PREFS, 0).edit().putString(Host.KEY_TREE, tree.toString()).apply();
+        String label = new Host(this).folderLabel();
+        callJs("__docscanFolderPicked", label.startsWith("ok:") ? label.substring(3) : "");
+    }
+
+    /** Hands the Google sign-in redirect (or null) to the page. */
+    void deliverOAuth(String query) {
+        runOnUiThread(() -> callJs("__docscanOAuth", query));
+    }
+
+    void toastError(String message) {
+        runOnUiThread(() -> Toast.makeText(this, message, Toast.LENGTH_LONG).show());
+    }
+
+    /** Matches the status and navigation bar strips to the page colours. */
+    void setBars(String top, String bottom, boolean lightBottom) {
+        int topColor;
+        int bottomColor;
+        try {
+            topColor = Color.parseColor(top);
+            bottomColor = Color.parseColor(bottom);
+        } catch (IllegalArgumentException ignored) {
+            return;
+        }
+        topInset.setBackgroundColor(topColor);
+        bottomInset.setBackgroundColor(bottomColor);
+        if (Build.VERSION.SDK_INT >= 30) {
+            android.view.WindowInsetsController controller = getWindow().getInsetsController();
+            if (controller != null) {
+                int nav = android.view.WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS;
+                controller.setSystemBarsAppearance(lightBottom ? nav : 0, nav);
+            }
+        } else {
+            getWindow().setStatusBarColor(topColor);
+            getWindow().setNavigationBarColor(bottomColor);
+            View decor = getWindow().getDecorView();
+            int flags = decor.getSystemUiVisibility();
+            flags = lightBottom ? flags | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR : flags & ~View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
+            decor.setSystemUiVisibility(flags);
+        }
+    }
+
+    /** Calls window[fn](arg) with a JSON-quoted string argument (or null). */
+    private void callJs(String fn, String arg) {
+        String value = arg == null ? "null" : JSONObject.quote(arg);
+        webView.evaluateJavascript("window." + fn + " && window." + fn + "(" + value + ")", null);
+    }
+
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        if (requestCode == REQ_FOLDER) {
+            folderPicked(resultCode, data);
+            return;
+        }
         if (requestCode != REQ_FILES) {
             super.onActivityResult(requestCode, resultCode, data);
             return;

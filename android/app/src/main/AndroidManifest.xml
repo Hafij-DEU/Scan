@@ -4,6 +4,8 @@
     <!-- Live preview and capture in the WebView (getUserMedia). -->
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />
+    <!-- Optional Google Drive sync. -->
+    <uses-permission android:name="android.permission.INTERNET" />
 
     <application
         android:allowBackup="true"

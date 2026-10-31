@@ -1,12 +1,13 @@
+import { jpgFileName, pageText, writeWithChoice } from '../export';
 import { loadImage } from '../imaging/image';
-import { saveBlob } from '../platform';
+import { signature } from '../settings';
 import { deletePage, getDoc, getPage, putDoc } from '../store';
-import { actionButton, busy, confirmDialog, errorMessage, h, iconButton, toast } from '../ui/dom';
+import { actionButton, busy, confirmDialog, errorMessage, h, iconButton, textDialog, toast } from '../ui/dom';
 import { pop, push, type Screen } from '../ui/router';
 import { cropScreen } from './crop';
-import { fileName } from './doc';
+import { drawSignature, signScreen } from './sign';
 
-/** One page full size, with re-edit, reorder, JPEG export and delete. */
+/** One page full size, with re-edit, signing, text, reorder, JPEG export and delete. */
 export function pageScreen(docId: string, pageId: string): Screen {
   let current = pageId;
   let url = '';
@@ -70,9 +71,29 @@ export function pageScreen(docId: string, pageId: string): Screen {
     const page = await getPage(current);
     if (!doc || !page) return;
     try {
-      toast(await saveBlob(page.processed, `${fileName(doc.name)}-p${doc.pages.indexOf(current) + 1}.jpg`));
+      const name = await writeWithChoice(jpgFileName(doc.name, doc.pages.indexOf(current) + 1), page.processed);
+      if (name) toast(`Saved ${name}`);
     } catch (e) {
       toast(errorMessage(e), true);
+    }
+  }
+
+  async function sign() {
+    if (!signature() && !(await drawSignature())) return;
+    push(signScreen(docId, current));
+  }
+
+  async function readText() {
+    const page = await getPage(current);
+    if (!page) return;
+    const done = await busy('Reading text…');
+    try {
+      const { text } = await pageText(page, (p) => done.text(`Reading text… ${Math.round(p * 100)}%`));
+      done();
+      await textDialog('Text on this page', text || '(No text found)');
+    } catch (e) {
+      done();
+      toast(`Text recognition failed: ${errorMessage(e)}`, true);
     }
   }
 
@@ -87,8 +108,10 @@ export function pageScreen(docId: string, pageId: string): Screen {
   const el = h('div', { class: 'page dark-screen' },
     h('header', { class: 'bar dark' }, iconButton('back', 'Back', () => pop()), label, prev, next),
     h('div', { class: 'page-stage' }, img),
-    h('div', { class: 'toolbar dark' },
+    h('div', { class: 'toolbar dark scroll' },
       actionButton('crop', 'Edit', () => void edit()),
+      actionButton('sign', 'Sign', () => void sign()),
+      actionButton('text', 'Text', () => void readText()),
       actionButton('left', 'Move', () => void move(-1)),
       actionButton('right', 'Move', () => void move(1)),
       actionButton('download', 'JPG', () => void saveJpg()),

@@ -12,6 +12,21 @@ export interface Screen {
 
 const stack: Screen[] = [];
 let root: HTMLElement;
+const watchers = new Set<(top: Screen) => void>();
+
+/** Called with the new top screen after every navigation. */
+export function onScreenChange(fn: (top: Screen) => void): void {
+  watchers.add(fn);
+}
+
+export function topScreen(): Screen | undefined {
+  return stack[stack.length - 1];
+}
+
+function changed(): void {
+  const top = topScreen();
+  if (top) watchers.forEach((fn) => fn(top));
+}
 
 export function initRouter(el: HTMLElement, first: Screen): void {
   root = el;
@@ -27,6 +42,7 @@ export function push(screen: Screen): void {
   stack.push(screen);
   screen.el.classList.add('screen');
   root.append(screen.el);
+  changed();
 }
 
 /** Replaces the top screen without resuming the one below. */
@@ -39,6 +55,7 @@ export function replace(screen: Screen): void {
   stack.push(screen);
   screen.el.classList.add('screen');
   root.append(screen.el);
+  changed();
 }
 
 export function canPop(): boolean {
@@ -53,6 +70,7 @@ export function pop(): boolean {
   const next = stack[stack.length - 1];
   next.el.hidden = false;
   next.resume?.();
+  changed();
   return true;
 }
 
@@ -68,5 +86,6 @@ export function popTo(name: string): boolean {
   const next = stack[i];
   next.el.hidden = false;
   next.resume?.();
+  changed();
   return true;
 }

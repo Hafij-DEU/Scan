@@ -1,5 +1,6 @@
 import type { FilterId } from './imaging/filters';
 import type { Quad } from './imaging/geometry';
+import type { OcrWord } from './pdf';
 
 export type Rotation = 0 | 90 | 180 | 270;
 
@@ -9,6 +10,14 @@ export interface DocMeta {
   created: number;
   updated: number;
   pages: string[];
+}
+
+/** A signature stamped on a page; position and width are fractions of the processed image. */
+export interface PageMark {
+  png: Blob;
+  x: number;
+  y: number;
+  w: number;
 }
 
 export interface PageRec {
@@ -23,6 +32,10 @@ export interface PageRec {
   width: number;
   height: number;
   thumb: Blob;
+  /** Stamped signatures, re-applied when the page is re-edited. */
+  marks?: PageMark[];
+  /** Cached text recognition of `processed`; cleared whenever the page image changes. */
+  ocr?: { text: string; words: OcrWord[] };
 }
 
 let dbPromise: Promise<IDBDatabase> | null = null;
