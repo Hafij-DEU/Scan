@@ -29,15 +29,22 @@ export function applyFilter(img: ImageData, filter: FilterId): ImageData {
   if (filter === 'magic') {
     // Divide each channel by its estimated paper colour: removes shadows and
     // colour casts, then a contrast curve and a saturation boost.
-    const bg = [0, 1, 2].map((ch) => background(img, ch));
-    for (let p = 0, i = 0; p < n; p++, i += 4) {
-      const r = curve(d[i] / bg[0][p], 1.5);
-      const g = curve(d[i + 1] / bg[1][p], 1.5);
-      const b = curve(d[i + 2] / bg[2][p], 1.5);
-      const l = 0.299 * r + 0.587 * g + 0.114 * b;
-      d[i] = l + (r - l) * 1.3;
-      d[i + 1] = l + (g - l) * 1.3;
-      d[i + 2] = l + (b - l) * 1.3;
+    const paper = new PaperSampler(img.width, img.height);
+    const grids = [0, 1, 2].map((ch) => paperGrid(img, ch, paper.block));
+    const rows = [0, 1, 2].map(() => new Float32Array(img.width));
+    const lut = curveLut(1.5);
+    for (let y = 0, i = 0; y < img.height; y++) {
+      for (let ch = 0; ch < 3; ch++) paper.row(grids[ch], y, rows[ch]);
+      const [br, bgr, bb] = rows;
+      for (let x = 0; x < img.width; x++, i += 4) {
+        const r = lut[Math.min(CURVE_STEPS, ((d[i] / br[x]) * CURVE_STEPS) | 0)];
+        const g = lut[Math.min(CURVE_STEPS, ((d[i + 1] / bgr[x]) * CURVE_STEPS) | 0)];
+        const b = lut[Math.min(CURVE_STEPS, ((d[i + 2] / bb[x]) * CURVE_STEPS) | 0)];
+        const l = 0.299 * r + 0.587 * g + 0.114 * b;
+        d[i] = l + (r - l) * 1.3;
+        d[i + 1] = l + (g - l) * 1.3;
+        d[i + 2] = l + (b - l) * 1.3;
+      }
     }
     return out;
   }
@@ -48,19 +55,40 @@ export function applyFilter(img: ImageData, filter: FilterId): ImageData {
   for (let i = 0; i < n * 4; i += 4) {
     ld[i] = (img.data[i] * 77 + img.data[i + 1] * 150 + img.data[i + 2] * 29) >> 8;
   }
-  const bg = background(lum, 0);
-  for (let p = 0, i = 0; p < n; p++, i += 4) {
-    const norm = ld[i] / bg[p];
-    let v: number;
-    if (filter === 'gray') {
-      v = curve(norm, 1.3);
-    } else {
-      // Soft threshold keeps anti-aliased edges on text.
-      v = norm >= 0.8 ? 255 : norm <= 0.62 ? 0 : ((norm - 0.62) / 0.18) * 255;
+  const paper = new PaperSampler(img.width, img.height);
+  const grid = paperGrid(lum, 0, paper.block);
+  const row = new Float32Array(img.width);
+  const lut = curveLut(1.3);
+  for (let y = 0, i = 0; y < img.height; y++) {
+    paper.row(grid, y, row);
+    for (let x = 0; x < img.width; x++, i += 4) {
+      const norm = ld[i] / row[x];
+      let v: number;
+      if (filter === 'gray') {
+        v = lut[Math.min(CURVE_STEPS, (norm * CURVE_STEPS) | 0)];
+      } else {
+        // Soft threshold keeps anti-aliased edges on text.
+        v = norm >= 0.8 ? 255 : norm <= 0.62 ? 0 : ((norm - 0.62) / 0.18) * 255;
+      }
+      d[i] = d[i + 1] = d[i + 2] = v;
     }
-    d[i] = d[i + 1] = d[i + 2] = v;
   }
   return out;
+}
+
+/** Table resolution of the contrast curve over normalised values 0..1. */
+const CURVE_STEPS = 4096;
+const curveLuts = new Map<number, Float32Array>();
+
+/** curve() sampled at CURVE_STEPS + 1 points: one lookup per channel instead of a Math.pow. */
+function curveLut(gamma: number): Float32Array {
+  let lut = curveLuts.get(gamma);
+  if (!lut) {
+    lut = new Float32Array(CURVE_STEPS + 1);
+    for (let i = 0; i <= CURVE_STEPS; i++) lut[i] = curve(i / CURVE_STEPS, gamma);
+    curveLuts.set(gamma, lut);
+  }
+  return lut;
 }
 
 function curve(norm: number, gamma: number): number {
@@ -69,13 +97,12 @@ function curve(norm: number, gamma: number): number {
 }
 
 /**
- * Per-pixel estimate of the paper (background) value of one channel: the
- * bright-half mean of coarse blocks, dilated to cover dense text and
- * smoothed, then bilinearly interpolated to full size. Never below 1.
+ * Coarse estimate of the paper (background) value of one channel: the
+ * bright-half mean of each block, dilated to cover dense text and smoothed.
+ * PaperSampler interpolates it to per-pixel values one row at a time.
  */
-function background(img: ImageData, ch: number): Float32Array {
+function paperGrid(img: ImageData, ch: number, block: number): Float32Array {
   const { width: w, height: h, data } = img;
-  const block = Math.max(8, Math.round(Math.max(w, h) / 48));
   const bw = Math.ceil(w / block);
   const bh = Math.ceil(h / block);
   let grid = new Float32Array(bw * bh);
@@ -102,25 +129,50 @@ function background(img: ImageData, ch: number): Float32Array {
   }
   grid = neighbourhood(grid, bw, bh, 'max');
   grid = neighbourhood(grid, bw, bh, 'mean');
-  grid = neighbourhood(grid, bw, bh, 'mean');
+  return neighbourhood(grid, bw, bh, 'mean');
+}
 
-  const out = new Float32Array(w * h);
-  for (let y = 0; y < h; y++) {
-    const gy = Math.min(bh - 1, Math.max(0, (y + 0.5) / block - 0.5));
-    const y0 = Math.floor(gy);
-    const y1 = Math.min(bh - 1, y0 + 1);
-    const fy = gy - y0;
+/**
+ * Bilinear interpolation of a paper grid to full size, a row at a time, so no
+ * full-size float buffer is needed. Column weights are shared by all channels.
+ * Values are never below 1.
+ */
+class PaperSampler {
+  readonly block: number;
+  private readonly bw: number;
+  private readonly bh: number;
+  private readonly x0: Int32Array;
+  private readonly x1: Int32Array;
+  private readonly fx: Float32Array;
+
+  constructor(w: number, h: number) {
+    this.block = Math.max(8, Math.round(Math.max(w, h) / 48));
+    this.bw = Math.ceil(w / this.block);
+    this.bh = Math.ceil(h / this.block);
+    this.x0 = new Int32Array(w);
+    this.x1 = new Int32Array(w);
+    this.fx = new Float32Array(w);
     for (let x = 0; x < w; x++) {
-      const gx = Math.min(bw - 1, Math.max(0, (x + 0.5) / block - 0.5));
-      const x0 = Math.floor(gx);
-      const x1 = Math.min(bw - 1, x0 + 1);
-      const fx = gx - x0;
-      const top = grid[y0 * bw + x0] + (grid[y0 * bw + x1] - grid[y0 * bw + x0]) * fx;
-      const bot = grid[y1 * bw + x0] + (grid[y1 * bw + x1] - grid[y1 * bw + x0]) * fx;
-      out[y * w + x] = Math.max(1, top + (bot - top) * fy);
+      const gx = Math.min(this.bw - 1, Math.max(0, (x + 0.5) / this.block - 0.5));
+      this.x0[x] = Math.floor(gx);
+      this.x1[x] = Math.min(this.bw - 1, this.x0[x] + 1);
+      this.fx[x] = gx - this.x0[x];
     }
   }
-  return out;
+
+  row(grid: Float32Array, y: number, out: Float32Array): void {
+    const { bw, bh, x0, x1, fx } = this;
+    const gy = Math.min(bh - 1, Math.max(0, (y + 0.5) / this.block - 0.5));
+    const r0 = Math.floor(gy) * bw;
+    const r1 = Math.min(bh - 1, Math.floor(gy) + 1) * bw;
+    const fy = gy - Math.floor(gy);
+    for (let x = 0; x < out.length; x++) {
+      const top = grid[r0 + x0[x]] + (grid[r0 + x1[x]] - grid[r0 + x0[x]]) * fx[x];
+      const bot = grid[r1 + x0[x]] + (grid[r1 + x1[x]] - grid[r1 + x0[x]]) * fx[x];
+      const v = top + (bot - top) * fy;
+      out[x] = v > 1 ? v : 1;
+    }
+  }
 }
 
 function neighbourhood(g: Float32Array, w: number, h: number, mode: 'max' | 'mean'): Float32Array<ArrayBuffer> {

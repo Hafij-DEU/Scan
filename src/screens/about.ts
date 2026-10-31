@@ -14,7 +14,7 @@ export function aboutScreen(): Screen {
       h('p', {}, 'Developed by Md. Hafijur Rahman'),
       h('p', {}, 'GitHub: ', h('a', { href: REPO, target: '_blank', rel: 'noreferrer' }, REPO)),
       h('p', {}, 'License: MIT'),
-      h('p', { class: 'muted' }, 'Third-party software: Electron (MIT) and Chromium (BSD and others) on desktop, AndroidX WebKit (Apache-2.0) on Android. The PDF writer and image processing are written from scratch, with no OCR or PDF library. Details: THIRD_PARTY_NOTICES.md in the GitHub repository.'),
+      h('p', { class: 'muted' }, 'Third-party software: Tauri (MIT or Apache-2.0) with the system web view (WebKitGTK on Linux, Microsoft Edge WebView2 on Windows) on desktop, AndroidX WebKit (Apache-2.0) on Android. The PDF writer and image processing are written from scratch, with no OCR or PDF library. Details: THIRD_PARTY_NOTICES.md in the GitHub repository.'),
       h('p', { class: 'muted' }, 'This app was generated with AI. Developer support may not be available.'),
     ),
   );

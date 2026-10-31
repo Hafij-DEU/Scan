@@ -8,7 +8,7 @@
 Private by design: everything runs on your device. No account, no ads, no tracking.
 
 [![Latest release](https://img.shields.io/github/v/release/Hafij-DEU/Scan?label=release&color=0f766e)](https://github.com/Hafij-DEU/Scan/releases/latest)
-[![Windows build](https://github.com/Hafij-DEU/Scan/actions/workflows/windows.yml/badge.svg)](https://github.com/Hafij-DEU/Scan/actions/workflows/windows.yml)
+[![Desktop build](https://github.com/Hafij-DEU/Scan/actions/workflows/desktop.yml/badge.svg)](https://github.com/Hafij-DEU/Scan/actions/workflows/desktop.yml)
 [![License: MIT](https://img.shields.io/github/license/Hafij-DEU/Scan?color=0f766e)](LICENSE)
 ![Platforms](https://img.shields.io/badge/platforms-Linux%20%7C%20Windows%20%7C%20Android-0f766e)
 
@@ -43,18 +43,23 @@ Private by design: everything runs on your device. No account, no ads, no tracki
 
 Get the files from the [latest release](https://github.com/Hafij-DEU/Scan/releases/latest).
 
-| Platform | File | Requirements |
-| --- | --- | --- |
-| **Linux** | `DocScan-<version>-amd64.deb` | Debian, Ubuntu or derivatives, x86-64 |
-| **Windows** | `DocScan-<version>-setup-x64.exe` (installer)<br>`DocScan-<version>-portable-x64.exe` (no install) | Windows 10 or 11, x64 |
-| **Android** | `DocScan-<version>.apk` | Android 10 or newer |
+| Platform | File | Size | Requirements |
+| --- | --- | --- | --- |
+| **Linux** | `DocScan-<version>-amd64.deb` | about 1 MB | Ubuntu 22.04, Debian 12 or newer, x86-64 |
+| **Windows** | `DocScan-<version>-setup-x64.exe` (installer)<br>`DocScan-<version>-portable-x64.exe` (no install) | a few MB | Windows 10 or 11, x64 |
+| **Android** | `DocScan-<version>.apk` | about 3 MB | Android 10 or newer |
+
+The desktop apps use the web engine your system already has (WebKitGTK on Linux, Microsoft Edge WebView2 on Windows) instead of bundling a browser. That keeps them small and quick to start.
+
+> [!NOTE]
+> **Upgrading from 0.1.x on Linux or Windows?** Version 0.2.0 replaced the desktop shell, so scans saved by 0.1.x don't show up in 0.2.0. Export the ones you want to keep as PDF before you update. On Windows, also uninstall the old *DocScan* from *Settings → Apps*; the new version installs next to it. Android is not affected.
 
 ### Linux
 
 This command works from any folder. It downloads the package, then installs it; run it again with a newer version to update.
 
 ```bash
-wget -O /tmp/DocScan.deb https://github.com/Hafij-DEU/Scan/releases/download/v0.1.2/DocScan-0.1.2-amd64.deb && sudo apt install /tmp/DocScan.deb
+wget -O /tmp/DocScan.deb https://github.com/Hafij-DEU/Scan/releases/download/v0.2.0/DocScan-0.2.0-amd64.deb && sudo apt install /tmp/DocScan.deb
 ```
 
 <details>
@@ -63,7 +68,7 @@ wget -O /tmp/DocScan.deb https://github.com/Hafij-DEU/Scan/releases/download/v0.
 Give `apt` the file's full path. A bare file name is looked up as a package name and fails.
 
 ```bash
-sudo apt install ~/Downloads/DocScan-0.1.2-amd64.deb
+sudo apt install ~/Downloads/DocScan-0.2.0-amd64.deb
 ```
 
 Some download managers save to `~/Downloads/Compressed/` instead.
@@ -82,7 +87,7 @@ Open the APK on your phone and allow installs from your browser or file manager 
 <details>
 <summary>Verify downloads</summary>
 
-Each release has a `SHA256SUMS` file for the `.deb` and `.apk`, and GitHub shows a SHA-256 digest for every file:
+Each release has a `SHA256SUMS` file for the `.deb`, `.exe` and `.apk` files, and GitHub shows a SHA-256 digest for every file:
 
 ```bash
 sha256sum -c SHA256SUMS --ignore-missing
@@ -115,17 +120,17 @@ flowchart LR
 
 One web app (`src/`, Vite + TypeScript, about 30 KB of JavaScript) ships in two shells:
 
-- **Linux and Windows**: [Electron](electron/main.cjs), packaged by electron-builder. Windows builds run on [GitHub Actions](.github/workflows/windows.yml).
+- **Linux and Windows**: a [Tauri](src-tauri/src/main.rs) shell in Rust on the system web view. Release builds run on [GitHub Actions](.github/workflows/desktop.yml).
 - **Android**: a small Java [WebView host](android/app/src/main/java/io/github/hafijbge/docscan/). It serves the app from a secure origin, grants camera access, and saves or shares exports.
 
 ## Build from source
 
-Requirements: Node.js 22+, pnpm 10 (`corepack enable`). For Android you also need JDK 17, the Android SDK (platform 35) and Gradle 8.11.
+Requirements: Node.js 22+, pnpm 10 (`corepack enable`). The desktop app also needs [Rust](https://rustup.rs/) and, on Linux, `libwebkit2gtk-4.1-dev`, `libgtk-3-dev` and `librsvg2-dev`. For Android you need JDK 17, the Android SDK (platform 35) and Gradle 8.11.
 
 ```bash
 pnpm install
 pnpm dev         # browser preview at http://localhost:5173
-pnpm start       # desktop app (Electron)
+pnpm start       # desktop app (Tauri, with live reload)
 pnpm build:deb   # release/DocScan-<version>-amd64.deb
 pnpm build:win   # release/*.exe (on Windows; CI does this for releases)
 pnpm build:apk   # debug APK in android/app/build/outputs/apk/debug/
@@ -148,9 +153,9 @@ The version comes from `package.json` for every platform.
 | `src/screens/` | Home, camera, crop, enhance, document and page screens |
 | `src/ui/` | DOM helpers, dialogs and the screen router |
 | `src/pdf.ts`, `src/store.ts`, `src/platform.ts` | PDF writer, IndexedDB storage, Android/desktop save and share |
-| `electron/` | Desktop shell |
+| `src-tauri/` | Desktop shell (Tauri, Rust) |
 | `android/` | Android WebView shell (Gradle project) |
-| `.github/workflows/` | Windows release build |
+| `.github/workflows/` | Linux and Windows release builds |
 | `docs/` | Screenshots and the [design notes](docs/camscanner-analysis.md) |
 </details>
 

@@ -1,0 +1,27 @@
+[package]
+name = "docscan"
+# The app version comes from package.json through tauri.conf.json.
+version = "0.0.0"
+description = "Document scanner: capture, auto-crop, enhance and export to PDF"
+license = "MIT"
+edition = "2021"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-dialog = "2"
+open = "5"
+percent-encoding = "2"
+
+[target.'cfg(target_os = "linux")'.dependencies]
+webkit2gtk = "2"
+
+# Small binary: the app's heavy work runs in the web view, not in Rust.
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = "s"
+panic = "abort"
+strip = true

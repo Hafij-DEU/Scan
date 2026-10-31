@@ -3,7 +3,7 @@ import { defineConfig } from 'vite';
 
 const { version } = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')) as { version: string };
 
-// Relative base: the same bundle loads from file:// (Electron) and the
+// Relative base: the same bundle loads from the Tauri app protocol and the
 // Android asset loader (https://appassets.androidplatform.net/assets/www/).
 export default defineConfig({
   base: './',

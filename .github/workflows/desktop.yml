@@ -1,0 +1,82 @@
+name: Desktop build
+
+# Builds the Linux .deb and the Windows installer + portable exe with Tauri on
+# GitHub's runners. Runs when a release is published (and attaches the files
+# and SHA256SUMS to it), or by hand from the Actions tab (files are kept as
+# workflow artifacts).
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # The oldest supported Ubuntu: the deb then runs on 22.04 and newer.
+          - os: ubuntu-22.04
+            script: build:deb
+            files: release/*.deb
+          - os: windows-latest
+            script: build:win
+            files: release/*.exe
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Linux build dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev librsvg2-dev
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm run ${{ matrix.script }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: DocScan-${{ runner.os }}
+          path: ${{ matrix.files }}
+          if-no-files-found: error
+
+      - name: Attach to release
+        if: github.event_name == 'release'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${{ github.event.release.tag_name }}" ${{ matrix.files }} --clobber
+
+  checksums:
+    if: github.event_name == 'release'
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: SHA256SUMS for every release file
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          gh release download "$TAG" -R "$GITHUB_REPOSITORY" -D files -p '*.deb' -p '*.exe' -p '*.apk'
+          cd files
+          sha256sum * > SHA256SUMS
+          cat SHA256SUMS
+          gh release upload "$TAG" -R "$GITHUB_REPOSITORY" SHA256SUMS --clobber

@@ -14,6 +14,8 @@ export function editScreen(draft: PageDraft): Screen {
   let rotation: Rotation = draft.rotation;
   let base: ImageData | null = null;
   let filtered: HTMLCanvasElement | null = null;
+  // Switching back to a filter already seen is instant.
+  const previews = new Map<FilterId, HTMLCanvasElement>();
   const stage = h('div', { class: 'edit-stage' }, h('div', { class: 'spinner' }));
   const chips = h('div', { class: 'filter-strip' });
   const chipButtons = new Map<FilterId, HTMLButtonElement>();
@@ -37,9 +39,13 @@ export function editScreen(draft: PageDraft): Screen {
     if (!base) return;
     filter = id;
     chipButtons.forEach((b, k) => b.classList.toggle('selected', k === id));
-    const t = applyFilter(base, id);
-    filtered = canvasOf(t.width, t.height);
-    ctx2d(filtered).putImageData(t, 0, 0);
+    filtered = previews.get(id) ?? null;
+    if (!filtered) {
+      const t = applyFilter(base, id);
+      filtered = canvasOf(t.width, t.height);
+      ctx2d(filtered).putImageData(t, 0, 0);
+      previews.set(id, filtered);
+    }
     show();
   }
 
